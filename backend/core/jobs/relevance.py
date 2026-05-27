@@ -84,9 +84,15 @@ _CATEGORY_KEYWORDS: dict[JobCategory, tuple[str, ...]] = {
     ),
 }
 
-# Generic office/ambition signals that should pull a job's score down — the
-# target user does poorly in pure office roles.
+# Signals that should pull a job's score down. Two groups:
+#   - office/ambition roles the applicant does poorly in, and
+#   - credentialed professions she is not qualified for (require a license,
+#     degree, or vocational certificate she does not hold).
+# These only penalize the score; the LLM matcher is the authoritative gate that
+# rejects qualification-gated roles outright. Lowering the score here lets the
+# cheap pre-filter drop the clear cases before an LLM call.
 _NEGATIVE_KEYWORDS: tuple[str, ...] = (
+    # Office / managerial / sales-ambition
     "myyntipäällikkö",
     "sales manager",
     "key account",
@@ -104,6 +110,17 @@ _NEGATIVE_KEYWORDS: tuple[str, ...] = (
     "provisiopalkka",
     "buukkari",
     "telemarkkinointi",
+    # Credentialed professions (qualification she lacks)
+    "opettaja",
+    "lastentarhanopettaja",
+    "parturi",
+    "kampaaja",
+    "sairaanhoitaja",
+    "lähihoitaja",
+    "sähköasentaja",
+    "hitsaaja",
+    "kosmetologi",
+    "vartija",
 )
 
 # Per-keyword-hit score. Category hits add, negative hits subtract.

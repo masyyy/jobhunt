@@ -33,9 +33,19 @@ Applicant profile:
 Judge generously. The candidate list has already been pre-filtered by keyword,
 so you only need to weed out postings that clearly don't make sense for this
 profile. When a posting plausibly fits — any ordinary retail/shop/customer
-job, or a temporary library/museum role — answer yes. Only answer no when the
+job, or a temporary library/museum role — answer yes. Answer no when the
 posting clearly conflicts with the profile (B2B/commission sales,
 managerial/lead roles, or pure office/specialist/technical jobs).
+
+Also answer no when the role requires a formal qualification, license, degree,
+or vocational certification she does not have. She has only a marketing/
+graphic-design degree and retail experience. Reject credentialed professions
+even when they look customer-facing — e.g. teacher (opettaja), hairdresser/
+barber (parturi-kampaaja, kampaaja), nurse or practical nurse (sairaanhoitaja,
+lähihoitaja), licensed trades (sähköasentaja, hitsaaja, trained kokki),
+beautician (kosmetologi), card-licensed security guard (vartija), and similar.
+A plain entry-level shop/sales/customer role that needs no such credential is
+still fine.
 
 Postings are in Finnish; reason about the Finnish title and any description.
 Always give a short (one sentence) reason in English for your decision.

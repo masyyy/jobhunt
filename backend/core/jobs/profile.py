@@ -30,4 +30,14 @@ What does NOT fit:
 - Managerial or team-lead positions (myymäläpäällikkö, sales manager, etc.).
 - Pure office / specialist / technical roles (developer, accountant, engineer,
   consultant, controller, lawyer).
+- Roles that require a formal qualification, license, degree, or vocational
+  certification she does not have. She has a marketing/graphic-design degree
+  and retail experience — nothing else. So exclude jobs that legally or
+  practically require credentials she lacks, e.g.: teacher (opettaja,
+  lastentarhanopettaja, sijaisopettaja), barber/hairdresser
+  (parturi-kampaaja, kampaaja), nurse/practical nurse (sairaanhoitaja,
+  lähihoitaja), licensed trades (sähköasentaja/electrician, kokki/trained
+  cook, hitsaaja/welder), beautician/cosmetologist (kosmetologi), security
+  guard requiring a card (vartija), driver needing a special licence
+  (yhdistelmäajoneuvonkuljettaja), and similar credentialed professions.
 """
