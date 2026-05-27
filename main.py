@@ -65,6 +65,43 @@ def _validate_internal_api_key() -> None:
         )
 
 
+async def _seed_jobs_if_empty(procrastinate_app: object) -> None:
+    """Enqueue a one-off scrape on boot when the jobs table is empty.
+
+    A fresh deploy starts with no jobs and would otherwise wait until the next
+    JOB_SCRAPE_CRON slot (up to 12h). This seeds the very first scrape so the UI
+    has data quickly. It is seed-only: once any job exists, restarts/redeploys
+    do nothing, so we never hammer the sources. The `scrape-jobs` queueing_lock
+    keeps this from stacking with a periodic run.
+    """
+    from procrastinate import App  # noqa: PLC0415
+    from procrastinate.exceptions import AlreadyEnqueued  # noqa: PLC0415
+
+    from backend.api.dependencies import get_job_repo_factory  # noqa: PLC0415
+
+    if not isinstance(procrastinate_app, App):
+        return
+
+    try:
+        repo_factory = get_job_repo_factory()
+        async with repo_factory() as repo:
+            existing = await repo.list(limit=1)
+        if existing:
+            logger.info("Jobs table already populated; skipping boot-time scrape seed")
+            return
+
+        await procrastinate_app.configure_task(
+            "scrape-jobs",
+            queueing_lock="scrape-jobs",
+            allow_unknown=False,
+        ).defer_async()
+        logger.info("Jobs table empty; enqueued one-off scrape-jobs to seed it")
+    except AlreadyEnqueued:
+        logger.info("A scrape-jobs run is already queued; skipping boot-time scrape seed")
+    except Exception:
+        logger.exception("Failed to seed jobs on startup; periodic scrape will still run")
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     """Initialize extensions on startup."""
@@ -113,6 +150,8 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         worker_task.add_done_callback(_on_worker_exit)
         worker_health.mark_healthy()
         logger.info("Procrastinate worker started (concurrency=%d)", settings.TASK_WORKER_CONCURRENCY)
+
+        await _seed_jobs_if_empty(procrastinate_app_instance)
 
     inflight_runs: dict[str, asyncio.Task[None]] = {}
     _app.state.inflight_runs = inflight_runs
