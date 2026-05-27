@@ -68,7 +68,17 @@ class Settings(BaseSettings):
                 f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
                 f"@{self.POSTGRES_HOST}/{self.POSTGRES_DB}?ssl=require"
             )
-        return self.DATABASE_URL
+        # Managed providers (Railway, Heroku, …) inject a libpq-style URL with a
+        # bare `postgresql://` (or legacy `postgres://`) scheme. SQLAlchemy needs
+        # the async driver spelled out, so normalize the scheme here.
+        url = self.DATABASE_URL
+        if url.startswith("postgresql+"):
+            return url
+        if url.startswith("postgres://"):
+            url = "postgresql://" + url[len("postgres://") :]
+        if url.startswith("postgresql://"):
+            return "postgresql+asyncpg://" + url[len("postgresql://") :]
+        return url
 
 
 settings = Settings()

@@ -7,11 +7,14 @@ import {
   ExternalLink,
   Loader2,
   MapPin,
+  Moon,
   PenLine,
   RefreshCw,
   Search,
   Sparkles,
+  Sun,
 } from 'lucide-react'
+import { useTheme } from '@/hooks/use-theme'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -76,6 +79,7 @@ const CATEGORY_FILTERS: { value: JobCategory | 'all'; label: string }[] = [
 
 export function JobsDashboard() {
   const queryClient = useQueryClient()
+  const { theme, toggleTheme } = useTheme()
   const [searchInput, setSearchInput] = useState('')
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState<JobCategory | 'all'>('all')
@@ -128,11 +132,24 @@ export function JobsDashboard() {
   return (
     <div className="flex-1 flex flex-col min-w-0 min-h-0 bg-gradient-to-b from-secondary/50 via-background to-background">
       <div className="px-4 md:px-8 pt-6 pb-4">
-        <h1 className="font-headline text-xl md:text-3xl font-bold tracking-tight mb-6">
-          <span className="bg-gradient-to-r from-primary via-chart-5 to-sidebar-primary bg-clip-text text-transparent">
-            Job Matches
-          </span>
-        </h1>
+        <div className="flex items-start justify-between gap-3 mb-6">
+          <h1 className="font-headline text-xl md:text-3xl font-bold tracking-tight">
+            <span className="bg-gradient-to-r from-primary via-chart-5 to-sidebar-primary bg-clip-text text-transparent">
+              Job Matches
+            </span>
+          </h1>
+          <button
+            onClick={toggleTheme}
+            className="h-9 w-9 flex items-center justify-center rounded-full ring-1 ring-border bg-card/60 hover:bg-accent transition-colors flex-shrink-0"
+            aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
+          >
+            {theme === 'light' ? (
+              <Moon className="h-4 w-4 text-muted-foreground" />
+            ) : (
+              <Sun className="h-4 w-4 text-muted-foreground" />
+            )}
+          </button>
+        </div>
 
         {/* Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">

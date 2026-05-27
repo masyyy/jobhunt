@@ -18,7 +18,6 @@ from backend.api.routers.internal import router as internal_router
 from backend.api.routers.jobs import router as jobs_router
 from backend.api.routers.task_outputs import router as task_outputs_router
 from backend.config import settings
-from backend.infrastructure.data_warehouse.duckdb_warehouse import ensure_delta_extension
 from backend.infrastructure.db.models.job import (
     Job as _JobModel,  # noqa: F401  # pyright: ignore[reportUnusedImport]  # registers model with Base.metadata
 )
@@ -70,7 +69,6 @@ def _validate_internal_api_key() -> None:
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     """Initialize extensions on startup."""
     _validate_internal_api_key()
-    ensure_delta_extension(install_azure=settings.AZURE_STORAGE_ACCOUNT_NAME is not None)
     if settings.OPENAI_API_KEY:
         logger.info("Using OpenAI directly")
     elif settings.AZURE_OPENAI_ENDPOINT:

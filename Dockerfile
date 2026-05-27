@@ -13,12 +13,6 @@ WORKDIR /app
 COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev --no-install-project
 
-# Pre-install DuckDB extensions so the image ships with them cached.
-# At runtime, install_extension() becomes a no-op (already present).
-ENV DUCKDB_EXTENSIONS_PATH=/app/.duckdb/extensions
-RUN mkdir -p $DUCKDB_EXTENSIONS_PATH && \
-    .venv/bin/python -c "import duckdb; conn = duckdb.connect(); conn.execute(\"SET extension_directory='/app/.duckdb/extensions'\"); conn.install_extension('delta'); conn.install_extension('azure'); conn.close(); print('DuckDB extensions cached')"
-
 # Stage 3: Final runtime image
 FROM python:3.13-slim AS runtime
 
@@ -32,7 +26,6 @@ RUN groupadd -r appuser && useradd -r -g appuser -d /app -s /sbin/nologin appuse
 WORKDIR /app
 
 COPY --from=python-deps /app/.venv /app/.venv
-COPY --from=python-deps /app/.duckdb /app/.duckdb
 
 COPY backend/ ./backend/
 COPY main.py alembic.ini entrypoint.sh ./
@@ -40,13 +33,12 @@ COPY alembic/ ./alembic/
 
 COPY --from=frontend-build /app/frontend/dist ./frontend/dist
 
-RUN mkdir -p /app/data/documents /app/data/datasets /app/.duckdb && \
+RUN mkdir -p /app/data/documents && \
     chown -R appuser:appuser /app
 
 ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    DUCKDB_EXTENSIONS_PATH=/app/.duckdb/extensions \
     DEBUG=false
 
 USER appuser
