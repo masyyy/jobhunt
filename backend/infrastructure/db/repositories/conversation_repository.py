@@ -42,20 +42,18 @@ class ConversationRepository:
         return Conversation(
             id=db_conv.id,
             toolbox=db_conv.toolbox,
-            user_id=db_conv.user_id,
             created_at=db_conv.created_at,
             updated_at=db_conv.updated_at,
             messages=[self._message_to_entity(m) for m in db_conv.messages],
             summaries=[self._summary_to_entity(s) for s in db_conv.summaries],
         )
 
-    async def create_conversation(self, *, toolbox: str | None = None, user_id: str | None = None) -> Conversation:
+    async def create_conversation(self, *, toolbox: str | None = None) -> Conversation:
         try:
             now = datetime.now()
             db_conversation = ConversationModel(
                 id=str(uuid.uuid4()),
                 toolbox=toolbox,
-                user_id=user_id,
                 created_at=now,
                 updated_at=now,
             )
@@ -66,7 +64,6 @@ class ConversationRepository:
             return Conversation(
                 id=db_conversation.id,
                 toolbox=db_conversation.toolbox,
-                user_id=db_conversation.user_id,
                 created_at=db_conversation.created_at,
                 updated_at=db_conversation.updated_at,
                 messages=[],
@@ -76,15 +73,13 @@ class ConversationRepository:
             await self.session.rollback()
             raise
 
-    async def get_conversation(self, conversation_id: str, *, user_id: str | None = None) -> Conversation | None:
+    async def get_conversation(self, conversation_id: str) -> Conversation | None:
         try:
             stmt = (
                 select(ConversationModel)
                 .where(ConversationModel.id == conversation_id)
                 .options(selectinload(ConversationModel.messages), selectinload(ConversationModel.summaries))
             )
-            if user_id is not None:
-                stmt = stmt.where(ConversationModel.user_id == user_id)
             result = await self.session.execute(stmt)
             db_conversation = result.scalar_one_or_none()
 
@@ -96,9 +91,7 @@ class ConversationRepository:
             await self.session.rollback()
             raise
 
-    async def get_latest_conversation(
-        self, *, toolbox: str | None = None, user_id: str | None = None
-    ) -> Conversation | None:
+    async def get_latest_conversation(self, *, toolbox: str | None = None) -> Conversation | None:
         try:
             stmt = (
                 select(ConversationModel)
@@ -108,8 +101,6 @@ class ConversationRepository:
             )
             if toolbox is not None:
                 stmt = stmt.where(ConversationModel.toolbox == toolbox)
-            if user_id is not None:
-                stmt = stmt.where(ConversationModel.user_id == user_id)
             result = await self.session.execute(stmt)
             db_conversation = result.scalar_one_or_none()
 
@@ -220,9 +211,7 @@ class ConversationRepository:
             await self.session.rollback()
             raise
 
-    async def list_conversations(
-        self, *, limit: int = 30, toolbox: str | None = None, user_id: str | None = None
-    ) -> list[Conversation]:
+    async def list_conversations(self, *, limit: int = 30, toolbox: str | None = None) -> list[Conversation]:
         """List conversations ordered by updated_at desc, with first user message text for title.
 
         Uses a single query with a correlated subquery to avoid N+1.
@@ -249,8 +238,6 @@ class ConversationRepository:
             )
             if toolbox is not None:
                 stmt = stmt.where(ConversationModel.toolbox == toolbox)
-            if user_id is not None:
-                stmt = stmt.where(ConversationModel.user_id == user_id)
             result = await self.session.execute(stmt)
             rows = result.all()
 
@@ -259,7 +246,6 @@ class ConversationRepository:
                 conv = Conversation(
                     id=db_conv.id,
                     toolbox=db_conv.toolbox,
-                    user_id=db_conv.user_id,
                     created_at=db_conv.created_at,
                     updated_at=db_conv.updated_at,
                     messages=[self._message_to_entity(first_msg)] if first_msg else [],

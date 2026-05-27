@@ -157,14 +157,14 @@ def test_build_deferred_ignores_user_messages() -> None:
 
 def _agent_with_config(monkeypatch: pytest.MonkeyPatch, config: AgentConfig) -> Any:
     """Build an Agent via create_agent against a monkeypatched TOOLBOX_AGENT_CONFIG."""
-    monkeypatch.setattr(chat_agent, "TOOLBOX_AGENT_CONFIG", {Toolbox.SALES: config})
+    monkeypatch.setattr(chat_agent, "TOOLBOX_AGENT_CONFIG", {Toolbox.JOBHUNT: config})
 
     # Avoid the real model resolver hitting OpenAI — swap the model factory.
     def _stub_get_model(_name: str) -> Model:
         return TestModel(call_tools=["ask_user"])
 
     monkeypatch.setattr(chat_agent, "get_model", _stub_get_model)
-    return chat_agent.create_agent(Toolbox.SALES, instructions="test")
+    return chat_agent.create_agent(Toolbox.JOBHUNT, instructions="test")
 
 
 def test_create_agent_registers_external_toolset(monkeypatch: pytest.MonkeyPatch) -> None:

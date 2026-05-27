@@ -7,9 +7,7 @@ import httpx
 import pytest
 from fastapi import FastAPI
 
-from backend.api.auth import require_admin, require_auth
 from backend.api.dependencies import get_task_output_repository
-from backend.api.models.auth import AuthenticatedUser
 from backend.api.routers.task_outputs import router
 from backend.core.entities.task_output import TaskOutput
 
@@ -64,21 +62,10 @@ def _make_output(
     )
 
 
-def _build_app(repo: FakeTaskOutputRepository, *, admin: bool = True) -> FastAPI:
-    """Build the test app. require_auth is always overridden (GET requires it).
-    By default require_admin is also overridden so PATCH succeeds; pass
-    admin=False to drop that override and let the real require_admin run —
-    used to assert PATCH is admin-gated."""
+def _build_app(repo: FakeTaskOutputRepository) -> FastAPI:
     app = FastAPI()
     app.include_router(router, prefix="/api")
     app.dependency_overrides[get_task_output_repository] = lambda: repo
-    app.dependency_overrides[require_auth] = lambda: AuthenticatedUser(
-        id="user-1", email="user@example.com", role="regular"
-    )
-    if admin:
-        app.dependency_overrides[require_admin] = lambda: AuthenticatedUser(
-            id="admin-1", email="admin@example.com", role="admin"
-        )
     return app
 
 
@@ -198,18 +185,6 @@ class TestPatchTaskOutputState:
             resp = await client.patch("/api/task-outputs/o1", json={"state": "compromised"})
 
         assert resp.status_code == 422
-
-    @pytest.mark.asyncio
-    async def test_requires_admin(self) -> None:
-        """Without the admin override, the real require_admin runs and rejects
-        the request — proving the route is admin-gated, not just authenticated."""
-        repo = FakeTaskOutputRepository([_make_output(id="o1")])
-        app = _build_app(repo, admin=False)
-
-        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
-            resp = await client.patch("/api/task-outputs/o1", json={"state": "dismissed"})
-
-        assert resp.status_code in (401, 403)
 
     @pytest.mark.asyncio
     async def test_rejects_smuggled_payload_keys(self) -> None:

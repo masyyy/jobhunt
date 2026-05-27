@@ -1,5 +1,6 @@
 import type { UIMessage } from '@ai-sdk/react'
-import { authFetch } from '@/lib/api'
+
+import { apiFetch } from './auth'
 
 export interface ConversationItem {
   conversation_id: string
@@ -40,6 +41,46 @@ export interface SignalPayload {
 
 export type DashboardQueryParams = Record<string, string | number>
 
+export type JobCategory =
+  | 'retail'
+  | 'craft'
+  | 'bookstore'
+  | 'library'
+  | 'museum'
+  | 'culture'
+  | 'other'
+export type JobStatus = 'new' | 'interested' | 'applied' | 'dismissed'
+export type JobSourceName = 'duunitori' | 'tyomarkkinatori' | 'kuntarekry'
+
+export interface Job {
+  id: string
+  source: JobSourceName
+  title: string
+  employer: string | null
+  location: string | null
+  url: string
+  posted_at: string | null
+  category: JobCategory
+  relevance_score: number
+  match_reason: string | null
+  application_cover_letter: string | null
+  application_how_to_apply: string | null
+  status: JobStatus
+}
+
+export interface JobApplication {
+  cover_letter: string
+  how_to_apply: string
+}
+
+export interface JobFilters {
+  category?: JobCategory
+  source?: JobSourceName
+  status?: JobStatus
+  search?: string
+  relevant_only?: boolean
+}
+
 export const queryKeys = {
   conversations: (toolbox?: string) => ['conversations', toolbox] as const,
   conversationHistory: (id: string | null, toolbox?: string) =>
@@ -47,20 +88,7 @@ export const queryKeys = {
   taskOutputs: (taskName: string, toolbox?: string) => ['taskOutputs', taskName, toolbox] as const,
   dashboardQuery: (queryName: string, params?: DashboardQueryParams) =>
     ['dashboardQuery', queryName, params ?? null] as const,
-  adminUsers: () => ['adminUsers'] as const,
-}
-
-export interface AdminUser {
-  id: string
-  email: string
-  role: 'admin' | 'regular'
-  created_at: string
-  last_seen_at: string
-}
-
-export interface InviteResponse {
-  email: string
-  action_link: string
+  jobs: (filters?: JobFilters) => ['jobs', filters ?? null] as const,
 }
 
 export async function fetchConversations(toolbox?: string): Promise<ConversationItem[]> {
@@ -68,7 +96,7 @@ export async function fetchConversations(toolbox?: string): Promise<Conversation
   if (toolbox) params.set('toolbox', toolbox)
   const qs = params.toString()
   const url = qs ? `/api/conversations?${qs}` : '/api/conversations'
-  const response = await authFetch(url)
+  const response = await apiFetch(url)
   if (!response.ok) {
     throw new Error('Failed to load conversations')
   }
@@ -88,7 +116,7 @@ export async function fetchConversationHistory(
     const qs = params.toString()
     url = `/api/conversation/history${qs ? `?${qs}` : ''}`
   }
-  const response = await authFetch(url)
+  const response = await apiFetch(url)
   if (!response.ok) {
     throw new Error('Failed to load conversation history')
   }
@@ -101,7 +129,7 @@ export async function fetchTaskOutputs(taskName: string, toolbox?: string): Prom
   if (toolbox) {
     params.set('toolbox', toolbox)
   }
-  const response = await authFetch(`/api/task-outputs?${params.toString()}`)
+  const response = await apiFetch(`/api/task-outputs?${params.toString()}`)
   if (!response.ok) {
     throw new Error('Failed to load task outputs')
   }
@@ -112,7 +140,7 @@ export async function updateTaskOutputState(
   outputId: string,
   state: SignalState
 ): Promise<TaskOutput> {
-  const response = await authFetch(`/api/task-outputs/${outputId}`, {
+  const response = await apiFetch(`/api/task-outputs/${outputId}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ state }),
@@ -124,7 +152,7 @@ export async function updateTaskOutputState(
 }
 
 export async function deleteConversation(conversationId: string): Promise<void> {
-  const response = await authFetch(`/api/conversation/${conversationId}`, {
+  const response = await apiFetch(`/api/conversation/${conversationId}`, {
     method: 'DELETE',
   })
   if (!response.ok) {
@@ -151,55 +179,56 @@ export async function fetchDashboardQuery(
     const qs = search.toString()
     if (qs) url += `?${qs}`
   }
-  const response = await authFetch(url)
+  const response = await apiFetch(url)
   if (!response.ok) {
     throw new Error(`Failed to load query: ${queryName}`)
   }
   return response.json() as Promise<QueryResponse>
 }
 
-export async function fetchAdminUsers(): Promise<AdminUser[]> {
-  const response = await authFetch('/api/admin/users')
+export async function fetchJobs(filters?: JobFilters): Promise<Job[]> {
+  const params = new URLSearchParams()
+  if (filters?.category) params.set('category', filters.category)
+  if (filters?.source) params.set('source', filters.source)
+  if (filters?.status) params.set('status', filters.status)
+  if (filters?.search) params.set('search', filters.search)
+  if (filters?.relevant_only === false) params.set('relevant_only', 'false')
+  const qs = params.toString()
+  const response = await apiFetch(`/api/jobs${qs ? `?${qs}` : ''}`)
   if (!response.ok) {
-    throw new Error('Failed to load users')
+    throw new Error('Failed to load jobs')
   }
-  return response.json() as Promise<AdminUser[]>
+  return response.json() as Promise<Job[]>
 }
 
-export async function reinviteAdminUser(userId: string): Promise<InviteResponse> {
-  const response = await authFetch(`/api/admin/users/${userId}/reinvite`, { method: 'POST' })
-  if (!response.ok) {
-    const detail = (await response.json().catch(() => ({}))) as { detail?: string }
-    throw new Error(detail.detail ?? 'Failed to generate invite link')
-  }
-  return response.json() as Promise<InviteResponse>
-}
-
-export async function deleteAdminUser(userId: string): Promise<void> {
-  const response = await authFetch(`/api/admin/users/${userId}`, { method: 'DELETE' })
-  if (!response.ok) {
-    const detail = (await response.json().catch(() => ({}))) as { detail?: string }
-    throw new Error(detail.detail ?? 'Failed to delete user')
-  }
-}
-
-export async function createInvite(email: string): Promise<InviteResponse> {
-  const response = await authFetch('/api/admin/invite', {
-    method: 'POST',
+export async function updateJobStatus(jobId: string, status: JobStatus): Promise<Job> {
+  const response = await apiFetch(`/api/jobs/${jobId}`, {
+    method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email }),
+    body: JSON.stringify({ status }),
   })
   if (!response.ok) {
-    const detail = (await response.json().catch(() => ({}))) as { detail?: string }
-    throw new Error(detail.detail ?? 'Failed to create invite')
+    throw new Error('Failed to update job status')
   }
-  return response.json() as Promise<InviteResponse>
+  return response.json() as Promise<Job>
+}
+
+export async function draftJobApplication(
+  jobId: string,
+  regenerate = false
+): Promise<JobApplication> {
+  const qs = regenerate ? '?regenerate=true' : ''
+  const response = await apiFetch(`/api/jobs/${jobId}/application${qs}`, { method: 'POST' })
+  if (!response.ok) {
+    throw new Error('Failed to draft application')
+  }
+  return response.json() as Promise<JobApplication>
 }
 
 export async function createConversation(toolbox?: string): Promise<ConversationCreateResponse> {
   const headers: Record<string, string> = {}
   if (toolbox) headers['x-toolbox'] = toolbox
-  const response = await authFetch('/api/conversation', { method: 'POST', headers })
+  const response = await apiFetch('/api/conversation', { method: 'POST', headers })
   if (!response.ok) {
     throw new Error('Failed to create conversation')
   }

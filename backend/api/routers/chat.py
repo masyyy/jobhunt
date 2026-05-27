@@ -18,7 +18,6 @@ from pydantic_ai.ui.vercel_ai.request_types import (
 from starlette.requests import Request
 from starlette.responses import Response, StreamingResponse
 
-from backend.api.auth import require_auth
 from backend.api.dependencies import (
     get_agent_deps,
     get_compaction_service,
@@ -26,7 +25,6 @@ from backend.api.dependencies import (
     get_prompt_loader,
     get_repository_factory,
 )
-from backend.api.models.auth import AuthenticatedUser
 from backend.api.models.chat import ConversationListItem, ConversationResponse
 from backend.api.vercel_adapter import SDK_VERSION, FulcrumVercelAdapter
 from backend.core.agents.chat_agent import create_agent
@@ -105,12 +103,11 @@ def extract_new_user_message(request_messages: list[ModelMessage]) -> list[Model
 @router.post("/conversation")
 async def create_conversation(
     request: Request,
-    user: AuthenticatedUser = Depends(require_auth),
     conversation_repository: ConversationRepositoryInterface = Depends(get_conversation_repository),
 ) -> ConversationResponse:
     """Create a new conversation"""
     toolbox_str = request.headers.get("x-toolbox")
-    conversation = await conversation_repository.create_conversation(toolbox=toolbox_str, user_id=user.id)
+    conversation = await conversation_repository.create_conversation(toolbox=toolbox_str)
     if not conversation.id:
         raise ValueError("Failed to create conversation")
     return ConversationResponse(conversation_id=conversation.id)
@@ -118,11 +115,10 @@ async def create_conversation(
 
 @router.get("/conversation/latest")
 async def get_latest_conversation(
-    user: AuthenticatedUser = Depends(require_auth),
     conversation_repository: ConversationRepositoryInterface = Depends(get_conversation_repository),
 ) -> ConversationResponse | None:
     """Get the latest conversation or None if no conversations exist"""
-    conversation = await conversation_repository.get_latest_conversation(user_id=user.id)
+    conversation = await conversation_repository.get_latest_conversation()
     if not conversation:
         return None
     if not conversation.id:
@@ -135,13 +131,12 @@ async def list_conversations(
     request: Request,
     limit: int = 30,
     toolbox: str | None = None,
-    user: AuthenticatedUser = Depends(require_auth),
     conversation_repository: ConversationRepositoryInterface = Depends(get_conversation_repository),
 ) -> list[ConversationListItem]:
     """List conversations with titles derived from the first user message."""
     # Accept toolbox from query param or header
     tb = toolbox or request.headers.get("x-toolbox")
-    conversations = await conversation_repository.list_conversations(limit=limit, toolbox=tb, user_id=user.id)
+    conversations = await conversation_repository.list_conversations(limit=limit, toolbox=tb)
     items = []
     for conv in conversations:
         title = "New conversation"
@@ -161,11 +156,10 @@ async def list_conversations(
 @router.delete("/conversation/{conversation_id}")
 async def delete_conversation(
     conversation_id: str,
-    user: AuthenticatedUser = Depends(require_auth),
     conversation_repository: ConversationRepositoryInterface = Depends(get_conversation_repository),
 ) -> dict[str, str]:
     """Delete a conversation and all its messages."""
-    conv = await conversation_repository.get_conversation(conversation_id, user_id=user.id)
+    conv = await conversation_repository.get_conversation(conversation_id)
     if not conv:
         raise HTTPException(status_code=404, detail="Conversation not found")
     deleted = await conversation_repository.delete_conversation(conversation_id)
@@ -178,12 +172,11 @@ async def delete_conversation(
 async def get_conversation_history(
     request: Request,
     toolbox: str | None = None,
-    user: AuthenticatedUser = Depends(require_auth),
     conversation_repository: ConversationRepositoryInterface = Depends(get_conversation_repository),
 ) -> dict[str, Any]:
     """Get the latest conversation with messages in UI format."""
     tb = toolbox or request.headers.get("x-toolbox")
-    conversation = await conversation_repository.get_latest_conversation(toolbox=tb, user_id=user.id)
+    conversation = await conversation_repository.get_latest_conversation(toolbox=tb)
     if not conversation or not conversation.id:
         return {"conversation_id": None, "messages": []}
 
@@ -205,11 +198,10 @@ async def get_conversation_history(
 @router.get("/conversation/{conversation_id}/history")
 async def get_conversation_history_by_id(
     conversation_id: str,
-    user: AuthenticatedUser = Depends(require_auth),
     conversation_repository: ConversationRepositoryInterface = Depends(get_conversation_repository),
 ) -> dict[str, Any]:
     """Get a specific conversation's messages in UI format."""
-    conv = await conversation_repository.get_conversation(conversation_id, user_id=user.id)
+    conv = await conversation_repository.get_conversation(conversation_id)
     if not conv:
         raise HTTPException(status_code=404, detail="Conversation not found")
     model_messages = await load_all_messages_for_ui(conversation_id, conversation_repository)
@@ -224,7 +216,6 @@ async def get_conversation_history_by_id(
 
 def _create_on_complete(
     conversation_id: str,
-    user_id: str,
     user_messages: list[ModelMessage],
     repo_factory: RepositoryFactory,
     compaction_service: CompactionService,
@@ -233,8 +224,6 @@ def _create_on_complete(
 
     Args:
         conversation_id: The conversation ID to save messages to.
-        user_id: The owning user id, used to verify the conversation still
-                 belongs to this user (defends against deletion + reuse races).
         user_messages: The user messages from the current request that need to be saved
                       (since new_messages() only returns messages created during the run).
         repo_factory: Factory for creating repository instances in the background callback.
@@ -252,7 +241,7 @@ def _create_on_complete(
             # Save to database (background callback — needs its own session)
             async with repo_factory() as repo:
                 # Check conversation still exists (may have been deleted during streaming)
-                conv = await repo.get_conversation(conversation_id, user_id=user_id)
+                conv = await repo.get_conversation(conversation_id)
                 if not conv:
                     logger.info(f"Conversation {conversation_id} was deleted during streaming, skipping persistence")
                     return
@@ -288,7 +277,6 @@ async def _run_agent_detached(
     on_complete: Any,
     queue: asyncio.Queue[Any | None],
     conversation_id: str,
-    user_id: str,
     user_messages: list[ModelMessage],
     repo_factory: RepositoryFactory,
 ) -> None:
@@ -328,7 +316,7 @@ async def _run_agent_detached(
         if not on_complete_fired and user_messages:
             try:
                 async with repo_factory() as repo:
-                    conv = await repo.get_conversation(conversation_id, user_id=user_id)
+                    conv = await repo.get_conversation(conversation_id)
                     if conv:
                         await save_messages_to_db(conversation_id, user_messages, repo)
                         logger.info(
@@ -369,15 +357,14 @@ async def _resolve_conversation_id(
     *,
     header_conversation_id: str | None,
     toolbox: Toolbox,
-    user_id: str,
     repo: ConversationRepositoryInterface,
 ) -> str:
     """Resolve the conversation id for this turn: explicit header > latest > create new.
 
-    Validates ownership and toolbox isolation when a header id is supplied.
+    Validates toolbox isolation when a header id is supplied.
     """
     if header_conversation_id:
-        conv = await repo.get_conversation(header_conversation_id, user_id=user_id)
+        conv = await repo.get_conversation(header_conversation_id)
         if not conv:
             raise HTTPException(status_code=404, detail="Conversation not found")
         if conv.toolbox is not None and conv.toolbox != toolbox.value:
@@ -387,10 +374,10 @@ async def _resolve_conversation_id(
             )
         return header_conversation_id
 
-    conversation = await repo.get_latest_conversation(toolbox=toolbox.value, user_id=user_id)
+    conversation = await repo.get_latest_conversation(toolbox=toolbox.value)
     if conversation and conversation.id:
         return conversation.id
-    new_conversation = await repo.create_conversation(toolbox=toolbox.value, user_id=user_id)
+    new_conversation = await repo.create_conversation(toolbox=toolbox.value)
     if not new_conversation.id:
         raise ValueError("Failed to create conversation")
     return new_conversation.id
@@ -440,7 +427,6 @@ def _make_done_callback(inflight: dict[str, asyncio.Task[None]], run_id: str) ->
 @router.post("/chat")
 async def chat(
     request: Request,
-    user: AuthenticatedUser = Depends(require_auth),
     deps: AgentDeps = Depends(get_agent_deps),
     conversation_repository: ConversationRepositoryInterface = Depends(get_conversation_repository),
     repo_factory: RepositoryFactory = Depends(get_repository_factory),
@@ -466,7 +452,6 @@ async def chat(
     conversation_id = await _resolve_conversation_id(
         header_conversation_id=request.headers.get("x-conversation-id"),
         toolbox=toolbox,
-        user_id=user.id,
         repo=conversation_repository,
     )
 
@@ -507,7 +492,7 @@ async def chat(
     logger.info(f"Found {len(new_user_messages)} new user messages to persist")
 
     # Create on_complete callback with the user messages and session factory
-    on_complete = _create_on_complete(conversation_id, user.id, new_user_messages, repo_factory, compaction_service)
+    on_complete = _create_on_complete(conversation_id, new_user_messages, repo_factory, compaction_service)
 
     # Use the manual adapter pattern since we already parsed the body.
     # sdk_version=6 enables tool approval streaming (`approval-requested` /
@@ -548,7 +533,6 @@ async def chat(
             on_complete=on_complete,
             queue=queue,
             conversation_id=conversation_id,
-            user_id=user.id,
             user_messages=new_user_messages,
             repo_factory=repo_factory,
         ),

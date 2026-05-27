@@ -8,9 +8,7 @@ import httpx
 import pytest
 from fastapi import FastAPI
 
-from backend.api.auth import require_auth
 from backend.api.dependencies import get_warehouse
-from backend.api.models.auth import AuthenticatedUser
 from backend.api.routers.data import router
 from backend.core.interfaces.data_warehouse import QueryResult
 from backend.core.queries.types import NamedQuery, ParamType, QueryParam
@@ -47,9 +45,6 @@ def _build_app(warehouse: FakeWarehouse) -> FastAPI:
     app = FastAPI()
     app.include_router(router, prefix="/api")
     app.dependency_overrides[get_warehouse] = lambda: warehouse
-    app.dependency_overrides[require_auth] = lambda: AuthenticatedUser(
-        id="user-1", email="user@example.com", role="regular"
-    )
     return app
 
 

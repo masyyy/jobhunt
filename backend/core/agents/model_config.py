@@ -25,6 +25,10 @@ logger = logging.getLogger(__name__)
 AZURE_OPENAI_API_VERSION = "2025-04-01-preview"
 
 MODEL_MAIN = "gpt-5.2"
+# Cheap, fast model for the per-posting job relevance filter.
+MODEL_MATCHER = "gpt-5.4-mini"
+# Stronger model for drafting job applications (cover letter + how-to-apply).
+MODEL_APPLICATION = "gpt-5.4"
 
 # Module-level reference for cleanup
 _credential: DefaultAzureCredential | None = None

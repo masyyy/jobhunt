@@ -39,7 +39,6 @@ import {
 import type { FileUIPart } from 'ai'
 import { AlertCircle, Bot, Check, FileIcon, Loader2, PlusIcon, X, XIcon } from 'lucide-react'
 import { queryKeys, fetchConversationHistory } from '@/lib/queries'
-import { getAuthToken } from '@/lib/api'
 
 interface ChatProps {
   conversationId: string | null
@@ -152,12 +151,8 @@ function AttachmentPreviews() {
 }
 
 async function openDocumentInNewTab(filePath: string): Promise<void> {
-  const token = await getAuthToken()
-  const headers: Record<string, string> = {}
-  if (token) headers.Authorization = `Bearer ${token}`
   const response = await fetch(
-    `/api/documents/${filePath.split('/').map(encodeURIComponent).join('/')}`,
-    { headers }
+    `/api/documents/${filePath.split('/').map(encodeURIComponent).join('/')}`
   )
   if (!response.ok) {
     console.error('Failed to fetch document', response.status)
@@ -303,12 +298,8 @@ function ChatInner({
       lastAssistantMessageIsCompleteWithToolCalls(state),
     transport: new DefaultChatTransport({
       api: '/api/chat',
-      // Lazy headers — fetch the access token on each request so we always
-      // send a fresh Supabase JWT (it auto-refreshes in the background).
-      headers: async () => {
-        const token = await getAuthToken()
+      headers: () => {
         const h: Record<string, string> = {}
-        if (token) h.Authorization = `Bearer ${token}`
         if (conversationId) h['x-conversation-id'] = conversationId
         if (toolbox) h['x-toolbox'] = toolbox
         return h

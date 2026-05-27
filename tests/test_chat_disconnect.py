@@ -130,7 +130,6 @@ async def test_on_complete_fires_when_consumer_disconnects() -> None:
                 on_complete=on_complete,
                 queue=queue,
                 conversation_id=conversation_id,
-                user_id="test-user",
                 user_messages=user_messages,
                 repo_factory=repo_factory,
             )
@@ -164,7 +163,7 @@ async def test_user_message_persisted_when_agent_raises() -> None:
     is not silently empty."""
     async with _make_test_repo_factory() as repo_factory:
         async with repo_factory() as repo:
-            conversation = await repo.create_conversation(user_id="test-user")
+            conversation = await repo.create_conversation()
         conversation_id = conversation.id
         assert conversation_id is not None
 
@@ -192,7 +191,6 @@ async def test_user_message_persisted_when_agent_raises() -> None:
                 on_complete=on_complete,
                 queue=queue,
                 conversation_id=conversation_id,
-                user_id="test-user",
                 user_messages=user_messages,
                 repo_factory=repo_factory,
             )
@@ -233,7 +231,6 @@ async def test_sentinel_is_always_enqueued_for_consumer() -> None:
                 on_complete=on_complete,
                 queue=queue,
                 conversation_id=conversation_id,
-                user_id="test-user",
                 user_messages=[],
                 repo_factory=repo_factory,
             )
@@ -293,7 +290,6 @@ async def test_bounded_queue_drops_events_but_completes_run() -> None:
                 on_complete=on_complete,
                 queue=queue,
                 conversation_id=conversation_id,
-                user_id="test-user",
                 user_messages=user_messages,
                 repo_factory=repo_factory,
             )

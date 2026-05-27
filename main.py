@@ -5,26 +5,25 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import Depends, FastAPI
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from backend.api.auth import auth_router, require_admin
-from backend.api.routers.admin import router as admin_router
 from backend.api.routers.chat import router as chat_router
 from backend.api.routers.data import router as data_router
 from backend.api.routers.documents import router as documents_router
 from backend.api.routers.health import router as health_router
 from backend.api.routers.internal import router as internal_router
+from backend.api.routers.jobs import router as jobs_router
 from backend.api.routers.task_outputs import router as task_outputs_router
 from backend.config import settings
 from backend.infrastructure.data_warehouse.duckdb_warehouse import ensure_delta_extension
+from backend.infrastructure.db.models.job import (
+    Job as _JobModel,  # noqa: F401  # pyright: ignore[reportUnusedImport]  # registers model with Base.metadata
+)
 from backend.infrastructure.db.models.task_output import (
     TaskOutput as _TaskOutputModel,  # noqa: F401  # pyright: ignore[reportUnusedImport]  # registers model with Base.metadata
-)
-from backend.infrastructure.db.models.user import (
-    User as _UserModel,  # noqa: F401  # pyright: ignore[reportUnusedImport]  # registers model with Base.metadata
 )
 
 logging.basicConfig(level=logging.INFO)
@@ -149,16 +148,11 @@ app.add_middleware(
 
 # Include API routes
 app.include_router(health_router, prefix="/api")
-app.include_router(auth_router, prefix="/api/auth")
-# Auth policy is declared at the endpoint level for chat/data/task_outputs
-# (each endpoint pulls Depends(require_auth) into its signature when it needs
-# the resolved user). admin_router is the exception: every endpoint is admin-only,
-# so we declare the gate once at the router level.
 app.include_router(chat_router, prefix="/api")
 app.include_router(data_router, prefix="/api")
 app.include_router(documents_router, prefix="/api")
 app.include_router(task_outputs_router, prefix="/api")
-app.include_router(admin_router, prefix="/api/admin", dependencies=[Depends(require_admin)])
+app.include_router(jobs_router, prefix="/api")
 app.include_router(internal_router, prefix="/internal")
 
 # Serve static files from frontend build

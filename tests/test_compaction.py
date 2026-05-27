@@ -90,7 +90,7 @@ def _as_agent(fake: FakeSummarizationAgent) -> Agent[None, str]:
 @pytest_asyncio.fixture
 async def conversation_id(conversation_repo: ConversationRepositoryInterface) -> str:
     """A persisted, empty conversation ready to be seeded."""
-    conv = await conversation_repo.create_conversation(toolbox="sales", user_id=None)
+    conv = await conversation_repo.create_conversation(toolbox="jobhunt")
     assert conv.id is not None
     return conv.id
 

@@ -17,15 +17,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.config import settings
 from backend.core.agents.deps import AgentDeps, DocumentChunkRepoFactory
 from backend.core.agents.model_config import MODEL_MAIN, get_model
+from backend.core.interfaces.application_assistant import ApplicationAssistant
 from backend.core.interfaces.conversation_repository import ConversationRepositoryInterface, RepositoryFactory
 from backend.core.interfaces.document_chunk_repository import DocumentChunkRepository
 from backend.core.interfaces.ingestion_log import IngestionLogRepositoryInterface
+from backend.core.interfaces.job_repository import JobRepoFactory, JobRepositoryInterface
+from backend.core.interfaces.job_source import JobSource
 from backend.core.interfaces.prompt_loader import PromptLoader
 from backend.core.interfaces.storage_config import DatasetStorageConfig
-from backend.core.interfaces.supabase_admin import SupabaseAdminInterface
 from backend.core.interfaces.task_output_repository import TaskOutputRepositoryInterface
 from backend.core.interfaces.task_queue import TaskQueue
-from backend.core.interfaces.user_repository import UserRepositoryInterface
 from backend.core.services.compaction import SUMMARIZATION_AGENT_INSTRUCTIONS, CompactionService
 from backend.customer.tasks import TaskDeps, build_task_registry
 from backend.infrastructure.data_warehouse.duckdb_warehouse import DuckDBWarehouse
@@ -33,13 +34,17 @@ from backend.infrastructure.db.database import AsyncSessionLocal, get_db_session
 from backend.infrastructure.db.repositories.conversation_repository import ConversationRepository
 from backend.infrastructure.db.repositories.document_chunk_repository import PgDocumentChunkRepository
 from backend.infrastructure.db.repositories.ingestion_log_repository import IngestionLogRepository
+from backend.infrastructure.db.repositories.job_repository import JobRepository
 from backend.infrastructure.db.repositories.task_output_repository import TaskOutputRepository
-from backend.infrastructure.db.repositories.user_repository import UserRepository
 from backend.infrastructure.embeddings import OpenAIEmbeddingProvider
 from backend.infrastructure.filesystem.local import LocalFileSystem
+from backend.infrastructure.application_assistant.llm import LlmApplicationAssistant
+from backend.infrastructure.job_matcher.llm import LlmJobMatcher
+from backend.infrastructure.job_sources.duunitori import DuunitoriSource
+from backend.infrastructure.job_sources.kuntarekry import KuntarekrySource
+from backend.infrastructure.job_sources.tyomarkkinatori import TyomarkkinatoriSource
 from backend.infrastructure.ingestion.local import DeltaIngestionService
 from backend.infrastructure.prompts.local import FilePromptLoader
-from backend.infrastructure.supabase.admin import SupabaseAdminClient
 from backend.infrastructure.tasks.local import LocalTaskQueue
 from backend.infrastructure.tasks.procrastinate_app import app as procrastinate_app
 from backend.infrastructure.tasks.procrastinate_queue import ProcrastinateTaskQueue
@@ -134,6 +139,12 @@ async def verify_internal_api_key(x_api_key: str | None = Header(default=None)) 
         raise HTTPException(status_code=401, detail="Invalid or missing API key")
 
 
+async def verify_app_password(x_app_password: str | None = Header(default=None)) -> None:
+    """Verify the X-App-Password header gating the public app endpoints."""
+    if x_app_password is None or not secrets.compare_digest(x_app_password, settings.APP_PASSWORD):
+        raise HTTPException(status_code=401, detail="Invalid or missing app password")
+
+
 def get_task_output_repository(
     session: AsyncSession = Depends(get_db_session),
 ) -> TaskOutputRepositoryInterface:
@@ -141,23 +152,27 @@ def get_task_output_repository(
     return TaskOutputRepository(session)
 
 
-def get_user_repository(
+def get_job_repository(
     session: AsyncSession = Depends(get_db_session),
-) -> UserRepositoryInterface:
-    """Get user repository instance."""
-    return UserRepository(session)
+) -> JobRepositoryInterface:
+    """Get job repository instance."""
+    return JobRepository(session)
 
 
-@lru_cache(maxsize=1)
-def _get_supabase_admin_singleton() -> SupabaseAdminClient:
-    return SupabaseAdminClient(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_ROLE_KEY)
+def get_application_assistant() -> ApplicationAssistant:
+    """Get the LLM-backed application assistant (cover letter + how-to-apply)."""
+    return LlmApplicationAssistant()
 
 
-def get_supabase_admin() -> SupabaseAdminInterface:
-    """Get the Supabase admin client. Raises 500 if service-role config is missing."""
-    if not settings.SUPABASE_URL or not settings.SUPABASE_SERVICE_ROLE_KEY:
-        raise HTTPException(status_code=500, detail="Supabase admin client not configured")
-    return _get_supabase_admin_singleton()
+def get_job_repo_factory() -> JobRepoFactory:
+    """Get a factory for creating job repositories in background tasks."""
+
+    @asynccontextmanager
+    async def _create() -> AsyncIterator[JobRepositoryInterface]:
+        async with AsyncSessionLocal() as session:
+            yield JobRepository(session)
+
+    return _create
 
 
 def get_procrastinate_app() -> ProcrastinateApp:
@@ -168,6 +183,15 @@ def get_procrastinate_app() -> ProcrastinateApp:
 @lru_cache(maxsize=1)
 def _get_procrastinate_queue() -> ProcrastinateTaskQueue:
     return ProcrastinateTaskQueue(procrastinate_app)
+
+
+def build_job_sources() -> list[JobSource]:
+    """Construct the job-source scrapers used by the scrape-jobs task."""
+    return [
+        DuunitoriSource(),
+        TyomarkkinatoriSource(),
+        KuntarekrySource(),
+    ]
 
 
 def build_task_deps() -> TaskDeps:
@@ -196,6 +220,9 @@ def build_task_deps() -> TaskDeps:
         document_fs=LocalFileSystem(root_dir=settings.DOCUMENTS_DIR),
         embedding_provider=_get_embedding_provider(),
         chunk_repo_factory=_get_chunk_repo_factory(),
+        job_repo_factory=get_job_repo_factory(),
+        job_sources=build_job_sources(),
+        job_matcher=LlmJobMatcher(),
     )
 
 

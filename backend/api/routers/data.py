@@ -16,7 +16,6 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
-from backend.api.auth import require_auth
 from backend.api.dependencies import get_warehouse
 from backend.core.queries.types import ParamBindError, bind_params
 from backend.customer.queries import DASHBOARD_QUERIES, DashboardQuery
@@ -33,7 +32,7 @@ class QueryResponse(BaseModel):
     truncated: bool
 
 
-@router.get("/data/query/{query_name}", dependencies=[Depends(require_auth)])
+@router.get("/data/query/{query_name}")
 def run_named_query(
     query_name: str,
     request: Request,

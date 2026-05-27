@@ -21,10 +21,14 @@ from backend.core.interfaces.embedding_provider import EmbeddingProvider
 from backend.core.interfaces.filesystem import FileSystem
 from backend.core.interfaces.ingestion import IngestionService
 from backend.core.interfaces.ingestion_log import IngestionLogRepoFactory
+from backend.core.interfaces.job_matcher import JobMatcher
+from backend.core.interfaces.job_repository import JobRepoFactory
+from backend.core.interfaces.job_source import JobSource
 from backend.core.interfaces.task_output_repository import TaskOutputRepoFactory
 from backend.core.tasks.generate_signals import generate_signals
 from backend.core.tasks.index_documents import index_documents
 from backend.core.tasks.ingest_file import ingest_file
+from backend.core.tasks.scrape_jobs import scrape_jobs
 from backend.customer.toolboxes import Toolbox
 from backend.infrastructure.tasks.local import TaskCallable
 
@@ -41,11 +45,13 @@ class TaskDeps:
     document_fs: FileSystem
     embedding_provider: EmbeddingProvider
     chunk_repo_factory: DocumentChunkRepoFactory
+    job_repo_factory: JobRepoFactory
+    job_sources: list[JobSource]
+    job_matcher: JobMatcher
 
 
 TOOLBOX_TASKS: dict[Toolbox, list[str]] = {
-    Toolbox.SALES: ["generate-signals"],
-    Toolbox.PRODUCTION: ["generate-signals"],
+    Toolbox.JOBHUNT: ["scrape-jobs"],
 }
 
 
@@ -73,8 +79,16 @@ def build_task_registry(deps: TaskDeps) -> dict[str, TaskCallable]:
             root=root,
         )
 
+    async def _scrape_jobs() -> None:
+        await scrape_jobs(
+            sources=deps.job_sources,
+            repo_factory=deps.job_repo_factory,
+            matcher=deps.job_matcher,
+        )
+
     return {
         "generate-signals": _generate_signals,
         "ingest-file": _ingest_file,
         "index-documents": _index_documents,
+        "scrape-jobs": _scrape_jobs,
     }

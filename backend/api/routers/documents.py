@@ -1,7 +1,7 @@
 """Serve raw document files referenced by chat tool calls.
 
 The chat agent's ``read_file`` tool surfaces a file pill in the UI; clicking
-the pill hits this endpoint to fetch the underlying bytes. Auth-required.
+the pill hits this endpoint to fetch the underlying bytes.
 Path traversal protection lives in ``LocalFileSystem``.
 """
 
@@ -14,9 +14,7 @@ from pathlib import PurePosixPath
 from fastapi import APIRouter, Depends, HTTPException
 from starlette.responses import Response
 
-from backend.api.auth import require_auth
 from backend.api.dependencies import get_agent_deps
-from backend.api.models.auth import AuthenticatedUser
 from backend.core.agents.deps import AgentDeps
 
 logger = logging.getLogger(__name__)
@@ -27,7 +25,6 @@ router = APIRouter()
 @router.get("/documents/{file_path:path}")
 async def get_document(
     file_path: str,
-    user: AuthenticatedUser = Depends(require_auth),  # noqa: ARG001
     deps: AgentDeps = Depends(get_agent_deps),
 ) -> Response:
     """Serve a file from the documents root.

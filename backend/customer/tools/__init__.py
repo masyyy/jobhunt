@@ -5,10 +5,7 @@ from backend.core.tools.search_files import search_files
 from backend.customer.toolboxes import Toolbox
 
 TOOLBOX_AGENT_CONFIG: dict[Toolbox, AgentConfig] = {
-    Toolbox.SALES: AgentConfig(
-        tools=[execute_sql, read_file, list_files, search_files],
-    ),
-    Toolbox.PRODUCTION: AgentConfig(
+    Toolbox.JOBHUNT: AgentConfig(
         tools=[execute_sql, read_file, list_files, search_files],
     ),
 }

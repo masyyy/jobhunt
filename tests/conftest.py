@@ -15,8 +15,8 @@ import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 # Importing the model modules registers the tables on Base.metadata.
-# We import the conversation + user models (conversations.user_id FKs to users)
-# but skip the pgvector-backed document_chunks table — SQLite can't create it.
+# We import the conversation models but skip the pgvector-backed
+# document_chunks table — SQLite can't create it.
 from backend.core.interfaces.conversation_repository import (
     ConversationRepositoryInterface,
     RepositoryFactory,
@@ -24,7 +24,6 @@ from backend.core.interfaces.conversation_repository import (
 from backend.infrastructure.db.models import (
     conversation as _conversation_models,  # noqa: F401  # pyright: ignore[reportUnusedImport]
 )
-from backend.infrastructure.db.models import user as _user_models  # noqa: F401  # pyright: ignore[reportUnusedImport]
 from backend.infrastructure.db.models.base import Base
 from backend.infrastructure.db.repositories.conversation_repository import ConversationRepository
 

@@ -1,12 +1,6 @@
 import '@testing-library/jest-dom/vitest'
 import { vi } from 'vitest'
 
-// Stub Supabase env so `src/lib/supabase.ts` doesn't throw on import.
-// Tests never make real network calls — anything that touches Supabase is
-// either mocked or wrapped via the AuthProvider.
-vi.stubEnv('VITE_SUPABASE_URL', 'http://localhost:54321')
-vi.stubEnv('VITE_SUPABASE_ANON_KEY', 'test-anon-key')
-
 // Mock URL.createObjectURL / revokeObjectURL (used by prompt-input attachments)
 URL.createObjectURL = vi.fn(() => 'blob:mock-url')
 URL.revokeObjectURL = vi.fn()

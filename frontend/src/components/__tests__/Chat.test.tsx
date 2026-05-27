@@ -56,11 +56,6 @@ vi.mock('@/lib/queries', async (importOriginal) => {
   }
 })
 
-vi.mock('@/lib/api', () => ({
-  getAuthToken: () => Promise.resolve('test-token'),
-  authFetch: vi.fn(),
-}))
-
 import Chat from '../Chat'
 
 function makeMessage(overrides: Partial<UIMessage> = {}): UIMessage {

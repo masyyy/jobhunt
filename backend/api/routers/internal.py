@@ -31,10 +31,15 @@ class IndexDocumentsRequest(_StrictBase):
     root: str | None = None
 
 
+class ScrapeJobsRequest(_StrictBase):
+    pass
+
+
 _TASK_SCHEMAS: dict[str, type[BaseModel]] = {
     "generate-signals": GenerateSignalsRequest,
     "ingest-file": IngestFileRequest,
     "index-documents": IndexDocumentsRequest,
+    "scrape-jobs": ScrapeJobsRequest,
 }
 
 
@@ -46,6 +51,8 @@ def _enqueue_kwargs(task_name: str, payload: BaseModel) -> dict[str, object]:
     if task_name == "index-documents" and isinstance(payload, IndexDocumentsRequest):
         key = f"index-documents:{payload.root or '*'}"
         return {"lock": key, "queueing_lock": key}
+    if task_name == "scrape-jobs":
+        return {"lock": "scrape-jobs", "queueing_lock": "scrape-jobs"}
     return {}
 
 

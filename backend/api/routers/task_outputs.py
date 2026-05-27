@@ -6,7 +6,6 @@ from typing import Any, Literal
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from backend.api.auth import require_admin, require_auth
 from backend.api.dependencies import get_task_output_repository
 from backend.core.entities.task_output import TaskOutput
 from backend.core.interfaces.task_output_repository import TaskOutputRepositoryInterface
@@ -26,10 +25,9 @@ SignalState = Literal["active", "dismissed", "acted_on", "expired"]
 
 
 class UpdateStateRequest(BaseModel):
-    """Only `state` is user-mutable. Task outputs are global (no per-user
-    ownership), so accepting an arbitrary payload would let any authenticated
-    user rewrite a signal's `prompt` — which is fed back into the chat agent
-    on click — for every other user."""
+    """Only `state` is user-mutable. Reads the existing payload server-side and
+    only overwrites `state`, so a caller cannot smuggle arbitrary keys (e.g. a
+    signal's `prompt`, which is fed back into the chat agent on click)."""
 
     model_config = {"extra": "forbid"}
 
@@ -56,7 +54,7 @@ def _to_response(o: TaskOutput) -> TaskOutputResponse:
     )
 
 
-@router.get("/task-outputs", dependencies=[Depends(require_auth)])
+@router.get("/task-outputs")
 async def get_task_outputs(
     task_name: str,
     toolbox: str | None = None,
@@ -67,7 +65,7 @@ async def get_task_outputs(
     return [_to_response(o) for o in outputs]
 
 
-@router.patch("/task-outputs/{output_id}", dependencies=[Depends(require_admin)])
+@router.patch("/task-outputs/{output_id}")
 async def update_task_output_state(
     output_id: str,
     body: UpdateStateRequest,
@@ -75,10 +73,8 @@ async def update_task_output_state(
 ) -> TaskOutputResponse:
     """Toggle the `state` field on a task output (active/dismissed/acted_on/expired).
 
-    Admin-only — task outputs are global (no per-user ownership), so any write
-    here mutates the dashboard for every user. Reads the existing payload
-    server-side and only overwrites `state`, so even an admin caller cannot
-    smuggle arbitrary keys.
+    Reads the existing payload server-side and only overwrites `state`, so a
+    caller cannot smuggle arbitrary keys.
     """
     existing = await repo.get_by_id(output_id)
     if existing is None:

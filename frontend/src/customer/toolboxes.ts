@@ -1,13 +1,9 @@
 import type { ComponentType } from 'react'
-import { Factory, TrendingUp } from 'lucide-react'
-import { SalesChat } from './sales/SalesChat'
-import { SalesSignals } from './sales/SalesSignals'
-import { ProductionChat } from './production/ProductionChat'
-import { ProductionSignals } from './production/ProductionSignals'
+import { Briefcase } from 'lucide-react'
+import { JobsDashboard } from './jobhunt/JobsDashboard'
 
 export const Toolbox = {
-  Sales: 'sales',
-  Production: 'production',
+  Jobhunt: 'jobhunt',
 } as const
 
 export type Toolbox = (typeof Toolbox)[keyof typeof Toolbox]
@@ -30,24 +26,11 @@ export interface ToolboxConfig {
 
 export const toolboxes: ToolboxConfig[] = [
   {
-    id: Toolbox.Sales,
-    label: 'Sales',
-    icon: TrendingUp,
-    description: 'Sales operations and account management',
-    views: [
-      { id: 'chat', label: 'Chat', component: SalesChat },
-      { id: 'signals', label: 'Signals', component: SalesSignals },
-    ],
-  },
-  {
-    id: Toolbox.Production,
-    label: 'Production',
-    icon: Factory,
-    description: 'Production monitoring and efficiency',
-    views: [
-      { id: 'chat', label: 'Chat', component: ProductionChat },
-      { id: 'signals', label: 'Signals', component: ProductionSignals },
-    ],
+    id: Toolbox.Jobhunt,
+    label: 'Job Hunt',
+    icon: Briefcase,
+    description: 'Finnish retail, craft, library, museum & culture jobs',
+    views: [{ id: 'jobs', label: 'Jobs', component: JobsDashboard }],
   },
 ]
 

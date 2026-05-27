@@ -8,9 +8,11 @@ DI helpers in backend.api.dependencies.
 
 from __future__ import annotations
 
+from backend.config import settings
 from backend.core.tasks.generate_signals import generate_signals
 from backend.core.tasks.index_documents import index_documents
 from backend.core.tasks.ingest_file import ingest_file
+from backend.core.tasks.scrape_jobs import scrape_jobs
 from backend.infrastructure.tasks.procrastinate_app import app
 from backend.infrastructure.tasks.task_deps_holder import get_task_deps
 
@@ -46,4 +48,30 @@ async def index_documents_task(root: str = "") -> None:
         embedder=deps.embedding_provider,
         repo_factory=deps.chunk_repo_factory,
         root=root,
+    )
+
+
+@app.task(name="scrape-jobs", queue="default", pass_context=False)
+async def scrape_jobs_task() -> None:
+    deps = get_task_deps()
+    await scrape_jobs(
+        sources=deps.job_sources,
+        repo_factory=deps.job_repo_factory,
+        matcher=deps.job_matcher,
+    )
+
+
+@app.periodic(cron=settings.JOB_SCRAPE_CRON)
+@app.task(name="scrape-jobs-periodic", queue="default", pass_context=False)
+async def scrape_jobs_periodic(timestamp: int) -> None:
+    """Recurring scrape on the JOB_SCRAPE_CRON schedule (default every 6h).
+
+    Procrastinate passes the scheduled ``timestamp``; it deduplicates runs by
+    (task, timestamp), so a single worker fires this once per slot.
+    """
+    deps = get_task_deps()
+    await scrape_jobs(
+        sources=deps.job_sources,
+        repo_factory=deps.job_repo_factory,
+        matcher=deps.job_matcher,
     )

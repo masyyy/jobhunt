@@ -33,7 +33,6 @@ class Conversation(BaseModel):
 
     id: str | None = None
     toolbox: str | None = None
-    user_id: str | None = None
     created_at: datetime
     updated_at: datetime
     messages: list[Message] = []
