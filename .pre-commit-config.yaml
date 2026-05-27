@@ -1,0 +1,86 @@
+repos:
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks
+
+  - repo: local
+    hooks:
+      # ── Static analysis ──────────────────────────
+      - id: ruff-lint
+        name: ruff lint
+        entry: uv run ruff check
+        language: system
+        types: [python]
+
+      - id: ruff-format
+        name: ruff format
+        entry: uv run ruff format --check
+        language: system
+        types: [python]
+
+      - id: pyright
+        name: pyright
+        entry: uv run pyright
+        language: system
+        types: [python]
+
+      - id: eslint
+        name: eslint
+        entry: bash -c 'cd frontend && npm run lint'
+        language: system
+        files: ^frontend/src/.*\.(ts|tsx)$
+        pass_filenames: false
+
+      - id: prettier
+        name: prettier
+        entry: bash -c 'cd frontend && npm run format:check'
+        language: system
+        files: ^frontend/src/.*\.(ts|tsx|css|json)$
+        pass_filenames: false
+
+      - id: typecheck
+        name: typescript type check
+        entry: bash -c 'cd frontend && npm run typecheck'
+        language: system
+        files: ^frontend/src/.*\.(ts|tsx)$
+        pass_filenames: false
+
+      # ── Ontology view linting ─────────────────────
+      - id: ontology-views
+        name: ontology view lint
+        entry: uv run python scripts/check_ontology.py
+        language: system
+        files: ^data/datasets/views/.*\.sql$
+        pass_filenames: true
+
+      # ── Customer config consistency ────────────────
+      - id: customer-config
+        name: customer config consistency
+        entry: uv run python scripts/check_customer_config.py
+        language: system
+        files: (backend/customer/|frontend/src/customer/|backend/prompts/)
+        pass_filenames: false
+
+      # ── Agent evals (only when prompts change) ────
+      - id: agent-evals
+        name: agent evals
+        entry: uv run pytest tests/evals -q
+        language: system
+        files: ^backend/prompts/.*\.md$
+        pass_filenames: false
+
+      # ── Dependency audits ────────────────────────
+      - id: pip-audit
+        name: pip-audit (Python vulnerability scan)
+        entry: uv run pip-audit
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      - id: npm-audit
+        name: npm audit (JS vulnerability scan)
+        entry: bash -c 'cd frontend && npm audit'
+        language: system
+        pass_filenames: false
+        always_run: true

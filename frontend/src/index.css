@@ -1,0 +1,240 @@
+@import 'tailwindcss';
+
+@plugin "tailwindcss-animate";
+
+@custom-variant dark (&:is(.dark *));
+
+body {
+  margin: 0;
+  font-family:
+    'Inter',
+    system-ui,
+    -apple-system,
+    sans-serif;
+}
+
+@theme inline {
+  --font-headline: 'Manrope', system-ui, sans-serif;
+
+  --radius-sm: 0.125rem;
+  --radius-md: 0.1875rem;
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 2px);
+  --radius-2xl: calc(var(--radius) + 4px);
+  --radius-3xl: calc(var(--radius) + 8px);
+  --radius-4xl: calc(var(--radius) + 12px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --color-surface-container-lowest: var(--surface-container-lowest);
+  --color-surface-container-low: var(--surface-container-low);
+  --color-surface-container: var(--surface-container);
+  --color-surface-container-high: var(--surface-container-high);
+  --color-surface-container-highest: var(--surface-container-highest);
+  --color-tertiary: var(--tertiary);
+  --color-on-primary-fixed: var(--on-primary-fixed);
+  --color-primary-container: var(--primary-container);
+  --color-outline-variant: var(--outline-variant);
+}
+
+/* Light mode */
+:root {
+  --radius: 0.25rem;
+
+  --background: #f5f2ef;
+  --foreground: #1c1b1b;
+  --card: #ede9e5;
+  --card-foreground: #1c1b1b;
+  --popover: #ede9e5;
+  --popover-foreground: #1c1b1b;
+  --primary: #d48a2e;
+  --primary-foreground: #2c1600;
+  --secondary: #e6e1dc;
+  --secondary-foreground: #1c1b1b;
+  --muted: #e6e1dc;
+  --muted-foreground: #6b6462;
+  --accent: #ddd8d3;
+  --accent-foreground: #1c1b1b;
+  --destructive: #c42b2b;
+  --border: #d5d0cb;
+  --input: #ddd8d3;
+  --ring: #d48a2e;
+
+  --chart-1: #d48a2e;
+  --chart-2: #5ba8d4;
+  --chart-3: #2a7a5a;
+  --chart-4: #9b6fd4;
+  --chart-5: #d46f4a;
+
+  --sidebar: #ede9e5;
+  --sidebar-foreground: #1c1b1b;
+  --sidebar-primary: #d48a2e;
+  --sidebar-primary-foreground: #2c1600;
+  --sidebar-accent: #e6e1dc;
+  --sidebar-accent-foreground: #1c1b1b;
+  --sidebar-border: #d5d0cb;
+  --sidebar-ring: #d48a2e;
+
+  --surface-container-lowest: #faf8f5;
+  --surface-container-low: #f0ece8;
+  --surface-container: #e6e1dc;
+  --surface-container-high: #ddd8d3;
+  --surface-container-highest: #d5d0cb;
+  --tertiary: #5ba8d4;
+  --on-primary-fixed: #2c1600;
+  --primary-container: #ff9a00;
+  --outline-variant: rgba(28, 27, 27, 0.15);
+}
+
+/* Dark mode — The Synthetic Architect */
+.dark {
+  --background: #131313;
+  --foreground: #e5e2e1;
+  --card: #1c1b1b;
+  --card-foreground: #e5e2e1;
+  --popover: #1c1b1b;
+  --popover-foreground: #e5e2e1;
+  --primary: #ffc183;
+  --primary-foreground: #2c1600;
+  --secondary: #201f1f;
+  --secondary-foreground: #e5e2e1;
+  --muted: #201f1f;
+  --muted-foreground: #9a9392;
+  --accent: #2a2a2a;
+  --accent-foreground: #e5e2e1;
+  --destructive: #e05252;
+  --border: #2a2a2a;
+  --input: #201f1f;
+  --ring: #ffc183;
+
+  --chart-1: #ffc183;
+  --chart-2: #8bd7ff;
+  --chart-3: #ff9a00;
+  --chart-4: #b89aff;
+  --chart-5: #ff8a6b;
+
+  --sidebar: #1c1b1b;
+  --sidebar-foreground: #e5e2e1;
+  --sidebar-primary: #ffc183;
+  --sidebar-primary-foreground: #2c1600;
+  --sidebar-accent: #2a2a2a;
+  --sidebar-accent-foreground: #e5e2e1;
+  --sidebar-border: #2a2a2a;
+  --sidebar-ring: #ffc183;
+
+  --surface-container-lowest: #0e0e0e;
+  --surface-container-low: #1c1b1b;
+  --surface-container: #201f1f;
+  --surface-container-high: #2a2a2a;
+  --surface-container-highest: #353434;
+  --tertiary: #8bd7ff;
+  --on-primary-fixed: #2c1600;
+  --primary-container: #ff9a00;
+  --outline-variant: rgba(229, 226, 225, 0.15);
+}
+
+@layer base {
+  * {
+    @apply outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Headline font utility */
+.font-headline {
+  font-family: 'Manrope', system-ui, sans-serif;
+}
+
+/* Markdown table styles (rendered by Streamdown) */
+[data-streamdown] table {
+  width: 100%;
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+  border: none !important;
+  background: var(--surface-container-low);
+  border-radius: 0.25rem;
+  overflow: hidden;
+  margin-bottom: 1rem;
+}
+
+[data-streamdown] th,
+[data-streamdown] td {
+  padding: 0.625rem 1rem;
+  border: none;
+  text-align: center !important;
+  font-size: 0.8125rem;
+  font-family: 'Manrope', system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+[data-streamdown] th {
+  font-weight: 600;
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted-foreground);
+  background-color: var(--surface-container-high);
+}
+
+[data-streamdown] tbody tr {
+  transition: background-color 0.15s;
+}
+
+[data-streamdown] tbody tr:nth-child(even) {
+  background-color: var(--surface-container);
+}
+
+[data-streamdown] tbody tr:hover {
+  background-color: var(--surface-container-high);
+}
