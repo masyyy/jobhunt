@@ -45,8 +45,8 @@ class Settings(BaseSettings):
     TASK_WORKER_CONCURRENCY: int = 4
 
     # Job scraping
-    # Cron schedule for the recurring scrape-jobs task (default: every 6 hours).
-    JOB_SCRAPE_CRON: str = "0 */6 * * *"
+    # Cron schedule for the recurring scrape-jobs task (default: every 12 hours).
+    JOB_SCRAPE_CRON: str = "0 */12 * * *"
 
     # Azure Blob Storage
     AZURE_STORAGE_ACCOUNT_NAME: str | None = None
