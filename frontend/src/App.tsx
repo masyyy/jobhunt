@@ -66,7 +66,7 @@ function AppRoutes() {
 
 function App() {
   return (
-    <ThemeProvider defaultTheme="dark">
+    <ThemeProvider defaultTheme="light">
       <LoginGate>
         <QueryClientProvider client={queryClient}>
           <BrowserRouter>
