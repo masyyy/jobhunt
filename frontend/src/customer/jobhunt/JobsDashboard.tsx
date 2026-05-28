@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Briefcase,
@@ -390,16 +390,22 @@ function ApplyDialog({
   })
 
   const { mutate } = mutation
-  const isPending = mutation.isPending
 
   // Generate (or load the saved draft) the first time the dialog opens. This
   // runs on the actual open transition, not just Radix's onOpenChange (which
   // doesn't fire when the parent flips `open` directly via the Apply button).
+  // Fires exactly once per open transition — depending on isPending/isError
+  // would re-trigger after a failed request and pound the endpoint.
+  const requestedForJobRef = useRef<string | null>(null)
   useEffect(() => {
-    if (open && draft === null && !isPending) {
-      mutate(false)
+    if (!open) {
+      requestedForJobRef.current = null
+      return
     }
-  }, [open, draft, isPending, mutate])
+    if (requestedForJobRef.current === job.id) return
+    requestedForJobRef.current = job.id
+    mutate(false)
+  }, [open, job.id, mutate])
 
   async function copyLetter() {
     await navigator.clipboard.writeText(letter)

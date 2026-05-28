@@ -1,8 +1,10 @@
 """Jobs API: list scraped job postings and update their status."""
 
+import time
+from collections import defaultdict, deque
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 
 from backend.api.dependencies import (
@@ -16,6 +18,32 @@ from backend.core.interfaces.job_repository import JobRepositoryInterface
 from backend.core.jobs.relevance import RELEVANCE_THRESHOLD
 
 router = APIRouter(dependencies=[Depends(verify_app_password)])
+
+# Sliding-window rate limit for the LLM-backed apply endpoint, keyed on
+# client IP. The app uses a shared password so there's no per-user id;
+# IP is the only identity available. In-memory: a single Procrastinate
+# worker shares the FastAPI process. If the API ever runs multi-replica
+# this needs to move to Redis.
+_APPLY_RATE_LIMIT = 10  # requests
+_APPLY_RATE_WINDOW = 1.0  # second
+_apply_request_times: dict[str, deque[float]] = defaultdict(deque)
+
+
+def _rate_limit_apply(request: Request) -> None:
+    client = request.client.host if request.client else "unknown"
+    now = time.monotonic()
+    window_start = now - _APPLY_RATE_WINDOW
+    times = _apply_request_times[client]
+    while times and times[0] < window_start:
+        times.popleft()
+    if len(times) >= _APPLY_RATE_LIMIT:
+        retry_after = max(0.0, _APPLY_RATE_WINDOW - (now - times[0]))
+        raise HTTPException(
+            status_code=429,
+            detail="Too many application drafts. Slow down.",
+            headers={"Retry-After": f"{retry_after:.2f}"},
+        )
+    times.append(now)
 
 
 @router.get("/auth/check")
@@ -102,7 +130,7 @@ class ApplicationResponse(BaseModel):
     how_to_apply: str
 
 
-@router.post("/jobs/{job_id}/application")
+@router.post("/jobs/{job_id}/application", dependencies=[Depends(_rate_limit_apply)])
 async def draft_application(
     job_id: str,
     regenerate: bool = Query(default=False),
