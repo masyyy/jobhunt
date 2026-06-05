@@ -69,7 +69,7 @@ async def _seed_jobs_if_empty(procrastinate_app: object) -> None:
     """Enqueue a one-off scrape on boot when the jobs table is empty.
 
     A fresh deploy starts with no jobs and would otherwise wait until the next
-    JOB_SCRAPE_CRON slot (up to 12h). This seeds the very first scrape so the UI
+    JOB_SCRAPE_CRON slot (up to 24h). This seeds the very first scrape so the UI
     has data quickly. It is seed-only: once any job exists, restarts/redeploys
     do nothing, so we never hammer the sources. The `scrape-jobs` queueing_lock
     keeps this from stacking with a periodic run.

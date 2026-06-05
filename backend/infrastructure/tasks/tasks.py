@@ -64,7 +64,7 @@ async def scrape_jobs_task() -> None:
 @app.periodic(cron=settings.JOB_SCRAPE_CRON)
 @app.task(name="scrape-jobs-periodic", queue="default", pass_context=False)
 async def scrape_jobs_periodic(timestamp: int) -> None:
-    """Recurring scrape on the JOB_SCRAPE_CRON schedule (default every 12h).
+    """Recurring scrape on the JOB_SCRAPE_CRON schedule (default once a day at 06:00).
 
     Procrastinate passes the scheduled ``timestamp``; it deduplicates runs by
     (task, timestamp), so a single worker fires this once per slot.
