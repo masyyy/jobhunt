@@ -22,7 +22,7 @@ from backend.core.entities.job import JobVerdict, ScrapedJob
 from backend.core.interfaces.job_matcher import JobMatcher, MatchResult
 from backend.core.interfaces.job_repository import JobRepoFactory
 from backend.core.interfaces.job_source import JobSource
-from backend.core.jobs.relevance import classify
+from backend.core.jobs.relevance import classify, is_hard_rejected
 
 logger = logging.getLogger(__name__)
 
@@ -87,8 +87,12 @@ async def scrape_jobs(
     ]
 
     # Keyword pre-filter: keep anything with at least one target-keyword hit.
+    # Drop credentialed-profession titles (teachers, hairdressers) outright so
+    # they never reach the LLM matcher.
     pre_filtered: list[tuple[ScrapedJob, int]] = []
     for job in in_region:
+        if is_hard_rejected(job.title):
+            continue
         _, score = classify(job.title, job.description)
         if score > 0:
             pre_filtered.append((job, score))

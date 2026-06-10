@@ -113,6 +113,7 @@ _NEGATIVE_KEYWORDS: tuple[str, ...] = (
     # Credentialed professions (qualification she lacks)
     "opettaja",
     "lastentarhanopettaja",
+    "lehtori",
     "parturi",
     "kampaaja",
     "sairaanhoitaja",
@@ -121,6 +122,20 @@ _NEGATIVE_KEYWORDS: tuple[str, ...] = (
     "hitsaaja",
     "kosmetologi",
     "vartija",
+)
+
+# Hard-reject keywords: if any appear in the *title*, the posting is dropped
+# before classification/LLM matching. Use only for credentialed professions
+# the candidate categorically cannot hold (teaching qualifications, licensed
+# trades), where the title alone is enough to disqualify. Matched as a
+# word-prefix like _NEGATIVE_KEYWORDS, so inflected forms ("opettajaksi",
+# "lehtoriksi") still match.
+HARD_REJECT_TITLE_KEYWORDS: tuple[str, ...] = (
+    "opettaja",
+    "lastentarhanopettaja",
+    "lehtori",
+    "parturi",
+    "kampaaja",
 )
 
 # Per-keyword-hit score. Category hits add, negative hits subtract.
@@ -146,6 +161,11 @@ def _count_hits(haystack: str, keywords: tuple[str, ...]) -> int:
         if re.search(rf"(?<![\w]){re.escape(kw)}", haystack):
             count += 1
     return count
+
+
+def is_hard_rejected(title: str) -> bool:
+    """True if the title contains a hard-reject keyword (credentialed profession)."""
+    return _count_hits(_norm(title), HARD_REJECT_TITLE_KEYWORDS) > 0
 
 
 def classify(title: str, description: str | None = None) -> tuple[JobCategory, int]:

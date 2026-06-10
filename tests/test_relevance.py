@@ -5,7 +5,7 @@ bug that drops every match to OTHER) would empty the dashboard without error.
 """
 
 from backend.core.entities.job import JobCategory
-from backend.core.jobs.relevance import RELEVANCE_THRESHOLD, classify
+from backend.core.jobs.relevance import RELEVANCE_THRESHOLD, classify, is_hard_rejected
 
 
 def test_no_keyword_match_is_other_with_zero_score():
@@ -52,3 +52,12 @@ def test_word_boundary_avoids_loose_substring():
 def test_retail_english_terms_match():
     category, _ = classify("Sales assistant at Normal store", None)
     assert category == JobCategory.RETAIL
+
+
+def test_hard_reject_flags_credentialed_titles():
+    assert is_hard_rejected("Opettaja, alakoulu")
+    assert is_hard_rejected("Lehtori, biologia")
+    assert is_hard_rejected("Parturi-kampaaja")
+    assert is_hard_rejected("Lastentarhanopettaja Espoon kaupunki")
+    assert not is_hard_rejected("Myyjä kirjakauppaan")
+    assert not is_hard_rejected("")
