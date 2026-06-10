@@ -136,6 +136,7 @@ HARD_REJECT_TITLE_KEYWORDS: tuple[str, ...] = (
     "lehtori",
     "parturi",
     "kampaaja",
+    "päällikkö",
 )
 
 # Per-keyword-hit score. Category hits add, negative hits subtract.
