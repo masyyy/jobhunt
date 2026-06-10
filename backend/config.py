@@ -53,10 +53,9 @@ class Settings(BaseSettings):
     # because the scraper runs daily — if a posting is gone for 3 days the
     # source has dropped it.
     JOB_PRUNE_STALE_AFTER_DAYS: int = 3
-    # Dismissed jobs older than this are deleted. Longer than the stale window
-    # so a recently-dismissed job can't re-surface if the source briefly drops
-    # and re-lists it.
-    JOB_PRUNE_DISMISSED_AFTER_DAYS: int = 30
+    # Dismissed jobs older than this are deleted. Short — dismissing is an
+    # explicit user action, so there's no reason to keep rejected jobs around.
+    JOB_PRUNE_DISMISSED_AFTER_DAYS: int = 1
 
     # Azure Blob Storage
     AZURE_STORAGE_ACCOUNT_NAME: str | None = None
