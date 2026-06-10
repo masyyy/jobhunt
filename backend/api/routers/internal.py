@@ -35,11 +35,16 @@ class ScrapeJobsRequest(_StrictBase):
     pass
 
 
+class PruneJobsRequest(_StrictBase):
+    pass
+
+
 _TASK_SCHEMAS: dict[str, type[BaseModel]] = {
     "generate-signals": GenerateSignalsRequest,
     "ingest-file": IngestFileRequest,
     "index-documents": IndexDocumentsRequest,
     "scrape-jobs": ScrapeJobsRequest,
+    "prune-jobs": PruneJobsRequest,
 }
 
 

@@ -1,7 +1,7 @@
 import uuid
 from datetime import UTC, datetime
 
-from sqlalchemy import or_, select
+from sqlalchemy import delete, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.core.entities.job import (
@@ -157,6 +157,24 @@ class JobRepository:
         result = await self.session.execute(select(JobModel).where(JobModel.id == job_id))
         row = result.scalar_one_or_none()
         return self._to_entity(row) if row is not None else None
+
+    async def prune_stale(self, *, stale_cutoff: datetime, dismissed_cutoff: datetime) -> int:
+        try:
+            stale_naive = _to_naive_utc(stale_cutoff)
+            dismissed_naive = _to_naive_utc(dismissed_cutoff)
+            stmt = delete(JobModel).where(
+                or_(
+                    JobModel.last_seen_at < stale_naive,
+                    (JobModel.status == JobStatus.DISMISSED.value)
+                    & (JobModel.first_seen_at < dismissed_naive),
+                )
+            )
+            result = await self.session.execute(stmt)
+            await self.session.commit()
+            return result.rowcount or 0
+        except Exception:
+            await self.session.rollback()
+            raise
 
     async def save_application(self, job_id: str, cover_letter: str, how_to_apply: str) -> Job | None:
         try:

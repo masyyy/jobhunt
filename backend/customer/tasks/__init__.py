@@ -25,9 +25,11 @@ from backend.core.interfaces.job_matcher import JobMatcher
 from backend.core.interfaces.job_repository import JobRepoFactory
 from backend.core.interfaces.job_source import JobSource
 from backend.core.interfaces.task_output_repository import TaskOutputRepoFactory
+from backend.config import settings
 from backend.core.tasks.generate_signals import generate_signals
 from backend.core.tasks.index_documents import index_documents
 from backend.core.tasks.ingest_file import ingest_file
+from backend.core.tasks.prune_jobs import prune_jobs
 from backend.core.tasks.scrape_jobs import scrape_jobs
 from backend.customer.toolboxes import Toolbox
 from backend.infrastructure.tasks.local import TaskCallable
@@ -51,7 +53,7 @@ class TaskDeps:
 
 
 TOOLBOX_TASKS: dict[Toolbox, list[str]] = {
-    Toolbox.JOBHUNT: ["scrape-jobs"],
+    Toolbox.JOBHUNT: ["scrape-jobs", "prune-jobs"],
 }
 
 
@@ -86,9 +88,17 @@ def build_task_registry(deps: TaskDeps) -> dict[str, TaskCallable]:
             matcher=deps.job_matcher,
         )
 
+    async def _prune_jobs() -> None:
+        await prune_jobs(
+            repo_factory=deps.job_repo_factory,
+            stale_after_days=settings.JOB_PRUNE_STALE_AFTER_DAYS,
+            dismissed_after_days=settings.JOB_PRUNE_DISMISSED_AFTER_DAYS,
+        )
+
     return {
         "generate-signals": _generate_signals,
         "ingest-file": _ingest_file,
         "index-documents": _index_documents,
         "scrape-jobs": _scrape_jobs,
+        "prune-jobs": _prune_jobs,
     }

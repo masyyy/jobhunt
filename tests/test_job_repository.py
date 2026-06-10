@@ -5,6 +5,7 @@ update derived fields and last_seen but never clobber the user's status.
 """
 
 from collections.abc import AsyncIterator
+from datetime import UTC, datetime, timedelta
 
 import pytest
 import pytest_asyncio
@@ -118,3 +119,77 @@ async def test_save_application_persists_draft(job_repo: JobRepository):
 @pytest.mark.asyncio
 async def test_save_application_returns_none_for_unknown_id(job_repo: JobRepository):
     assert await job_repo.save_application("nope", "x", "y") is None
+
+
+async def _backdate(job_repo: JobRepository, external_id: str, *, last_seen: datetime | None = None,
+                   first_seen: datetime | None = None, status: JobStatus | None = None) -> None:
+    """Force timestamps + status on a row so prune cutoffs can be exercised."""
+    from sqlalchemy import select as _select  # noqa: PLC0415
+
+    from backend.infrastructure.db.models.job import Job as JobModel  # noqa: PLC0415
+
+    result = await job_repo.session.execute(_select(JobModel).where(JobModel.external_id == external_id))
+    row = result.scalar_one()
+    if last_seen is not None:
+        row.last_seen_at = last_seen.replace(tzinfo=None)
+    if first_seen is not None:
+        row.first_seen_at = first_seen.replace(tzinfo=None)
+    if status is not None:
+        row.status = status.value
+    await job_repo.session.commit()
+
+
+@pytest.mark.asyncio
+async def test_prune_stale_deletes_jobs_not_seen_since_cutoff(job_repo: JobRepository):
+    now = datetime.now(UTC)
+    await job_repo.upsert_many([(_scraped("old"), _verdict(20)), (_scraped("fresh"), _verdict(20))])
+    await _backdate(job_repo, "old", last_seen=now - timedelta(days=10))
+
+    deleted = await job_repo.prune_stale(
+        stale_cutoff=now - timedelta(days=3),
+        dismissed_cutoff=now - timedelta(days=30),
+    )
+    assert deleted == 1
+    remaining = {j.external_id for j in await job_repo.list()}
+    assert remaining == {"fresh"}
+
+
+@pytest.mark.asyncio
+async def test_prune_stale_deletes_old_dismissed_even_if_freshly_seen(job_repo: JobRepository):
+    now = datetime.now(UTC)
+    await job_repo.upsert_many([(_scraped("dismissed-old"), _verdict(20))])
+    # Still being re-listed by the source (last_seen fresh), but the user
+    # dismissed it a long time ago — should still be pruned.
+    await _backdate(
+        job_repo,
+        "dismissed-old",
+        first_seen=now - timedelta(days=45),
+        status=JobStatus.DISMISSED,
+    )
+
+    deleted = await job_repo.prune_stale(
+        stale_cutoff=now - timedelta(days=3),
+        dismissed_cutoff=now - timedelta(days=30),
+    )
+    assert deleted == 1
+    assert await job_repo.list() == []
+
+
+@pytest.mark.asyncio
+async def test_prune_stale_keeps_recent_dismissed(job_repo: JobRepository):
+    now = datetime.now(UTC)
+    await job_repo.upsert_many([(_scraped("dismissed-new"), _verdict(20))])
+    # Dismissed yesterday — must not be pruned even though status is dismissed.
+    await _backdate(
+        job_repo,
+        "dismissed-new",
+        first_seen=now - timedelta(days=1),
+        status=JobStatus.DISMISSED,
+    )
+
+    deleted = await job_repo.prune_stale(
+        stale_cutoff=now - timedelta(days=3),
+        dismissed_cutoff=now - timedelta(days=30),
+    )
+    assert deleted == 0
+    assert len(await job_repo.list(status=JobStatus.DISMISSED)) == 1

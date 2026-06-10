@@ -12,6 +12,7 @@ from backend.config import settings
 from backend.core.tasks.generate_signals import generate_signals
 from backend.core.tasks.index_documents import index_documents
 from backend.core.tasks.ingest_file import ingest_file
+from backend.core.tasks.prune_jobs import prune_jobs
 from backend.core.tasks.scrape_jobs import scrape_jobs
 from backend.infrastructure.tasks.procrastinate_app import app
 from backend.infrastructure.tasks.task_deps_holder import get_task_deps
@@ -74,4 +75,26 @@ async def scrape_jobs_periodic(timestamp: int) -> None:
         sources=deps.job_sources,
         repo_factory=deps.job_repo_factory,
         matcher=deps.job_matcher,
+    )
+
+
+@app.task(name="prune-jobs", queue="default", pass_context=False)
+async def prune_jobs_task() -> None:
+    deps = get_task_deps()
+    await prune_jobs(
+        repo_factory=deps.job_repo_factory,
+        stale_after_days=settings.JOB_PRUNE_STALE_AFTER_DAYS,
+        dismissed_after_days=settings.JOB_PRUNE_DISMISSED_AFTER_DAYS,
+    )
+
+
+@app.periodic(cron=settings.JOB_PRUNE_CRON)
+@app.task(name="prune-jobs-periodic", queue="default", pass_context=False)
+async def prune_jobs_periodic(timestamp: int) -> None:
+    """Recurring prune on the JOB_PRUNE_CRON schedule (default once a day at 04:00)."""
+    deps = get_task_deps()
+    await prune_jobs(
+        repo_factory=deps.job_repo_factory,
+        stale_after_days=settings.JOB_PRUNE_STALE_AFTER_DAYS,
+        dismissed_after_days=settings.JOB_PRUNE_DISMISSED_AFTER_DAYS,
     )

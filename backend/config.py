@@ -47,6 +47,16 @@ class Settings(BaseSettings):
     # Job scraping
     # Cron schedule for the recurring scrape-jobs task (default: once a day at 06:00).
     JOB_SCRAPE_CRON: str = "0 6 * * *"
+    # Periodic prune of stale + dismissed jobs (default: once a day at 04:00).
+    JOB_PRUNE_CRON: str = "0 4 * * *"
+    # Jobs not re-seen by the scraper for this many days are deleted. Short
+    # because the scraper runs daily — if a posting is gone for 3 days the
+    # source has dropped it.
+    JOB_PRUNE_STALE_AFTER_DAYS: int = 3
+    # Dismissed jobs older than this are deleted. Longer than the stale window
+    # so a recently-dismissed job can't re-surface if the source briefly drops
+    # and re-lists it.
+    JOB_PRUNE_DISMISSED_AFTER_DAYS: int = 30
 
     # Azure Blob Storage
     AZURE_STORAGE_ACCOUNT_NAME: str | None = None
